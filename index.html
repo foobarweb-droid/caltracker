@@ -1,0 +1,1003 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Cal Tracker">
+<meta name="theme-color" content="#f5f4f0">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>Cal Tracker</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap');
+
+:root {
+  --bg: #f5f4f0;
+  --surface: #ffffff;
+  --surface2: #f0efe9;
+  --border: #e2e0d8;
+  --border2: #d0cec4;
+  --text: #1a1916;
+  --text2: #6b6860;
+  --text3: #9e9c96;
+  --accent: #2d5a27;
+  --accent-bg: #eaf3e8;
+  --accent-text: #1d3e19;
+  --warn-bg: #fdf3e7;
+  --warn-text: #7a4a10;
+  --danger: #8b1a1a;
+  --danger-bg: #fdf0f0;
+  --info-bg: #edf3fa;
+  --info-text: #1a3a5c;
+  --meal-bg: #eaf3e8; --meal-text: #1d3e19;
+  --snack-bg: #fdf3e7; --snack-text: #5a3510;
+  --ingredient-bg: #edf3fa; --ingredient-text: #1a3a5c;
+  --radius: 10px;
+  --radius-lg: 14px;
+  --safe-top: env(safe-area-inset-top);
+  --safe-bottom: env(safe-area-inset-bottom);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+html, body { height: 100%; overflow: hidden; }
+
+body {
+  font-family: 'DM Sans', -apple-system, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 15px;
+  overscroll-behavior: none;
+}
+
+/* Layout */
+.app {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  height: 100dvh;
+}
+
+.content {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
+}
+
+/* Pages */
+.page { display: none; padding: 20px 16px; padding-bottom: calc(20px + var(--safe-bottom)); }
+.page.active { display: block; }
+
+/* Bottom nav */
+.bottom-nav {
+  display: flex;
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  padding-bottom: var(--safe-bottom);
+  flex-shrink: 0;
+}
+
+.nav-btn {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 4px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--text3);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 10px;
+  font-weight: 500;
+  gap: 4px;
+  transition: color 0.1s;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.nav-btn.active { color: var(--accent); }
+.nav-btn svg { width: 22px; height: 22px; stroke-width: 1.6; }
+
+/* Header */
+.page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+  padding-top: calc(var(--safe-top) + 4px);
+}
+
+.page-title { font-size: 22px; font-weight: 600; letter-spacing: -0.5px; }
+.page-sub { font-size: 13px; color: var(--text3); margin-top: 2px; }
+
+/* Cards */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 16px;
+  margin-bottom: 14px;
+}
+
+/* Total bar */
+.total-bar {
+  background: var(--accent-bg);
+  border: 1px solid #c8dfc5;
+  border-radius: var(--radius-lg);
+  padding: 16px 18px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.total-lbl { font-size: 13px; color: var(--accent-text); font-weight: 500; }
+.total-num { font-size: 30px; font-weight: 600; letter-spacing: -1.5px; color: var(--accent-text); font-family: 'DM Mono', monospace; }
+.total-unit { font-size: 13px; color: var(--accent); margin-left: 3px; }
+
+/* Date nav */
+.date-nav { display: flex; align-items: center; gap: 8px; margin-bottom: 16px; }
+.date-nav-label { flex: 1; text-align: center; font-size: 14px; font-weight: 500; }
+
+.icon-btn {
+  width: 36px; height: 36px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px;
+  color: var(--text2);
+}
+
+/* Search */
+.search-wrap { position: relative; margin-bottom: 14px; }
+.search-input {
+  width: 100%;
+  padding: 11px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  font-size: 15px;
+  font-family: 'DM Sans', sans-serif;
+  color: var(--text);
+  outline: none;
+  -webkit-appearance: none;
+}
+
+.dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0; right: 0;
+  background: var(--surface);
+  border: 1px solid var(--border2);
+  border-radius: var(--radius);
+  z-index: 200;
+  overflow: hidden;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.10);
+  max-height: 260px;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.dd-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+}
+.dd-item:last-child { border-bottom: none; }
+.dd-item:active { background: var(--surface2); }
+.dd-name { font-size: 14px; }
+.dd-cal { font-size: 12px; color: var(--text3); font-family: 'DM Mono', monospace; }
+
+/* List items */
+.list-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 11px 0;
+  border-bottom: 1px solid var(--border);
+}
+.list-item:last-child { border-bottom: none; }
+.item-name { flex: 1; font-size: 14px; line-height: 1.3; }
+.item-meta { font-size: 12px; color: var(--text3); white-space: nowrap; }
+.item-cal { font-size: 13px; font-weight: 500; font-family: 'DM Mono', monospace; color: var(--text2); white-space: nowrap; }
+
+/* Badges */
+.badge {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 500;
+  padding: 2px 7px;
+  border-radius: 20px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  white-space: nowrap;
+}
+.badge.meal { background: var(--meal-bg); color: var(--meal-text); }
+.badge.snack { background: var(--snack-bg); color: var(--snack-text); }
+.badge.ingredient { background: var(--ingredient-bg); color: var(--ingredient-text); }
+
+/* Buttons */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 0 16px;
+  height: 40px;
+  border: 1px solid var(--border2);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  -webkit-appearance: none;
+}
+.btn:active { opacity: 0.7; }
+.btn-primary { background: var(--text); color: var(--bg); border-color: var(--text); }
+.btn-danger { color: var(--danger); border-color: #e8c0c0; }
+.btn-danger:active { background: var(--danger-bg); }
+.btn-accent { background: var(--accent-bg); color: var(--accent-text); border-color: #c8dfc5; }
+.btn-sm { height: 32px; padding: 0 10px; font-size: 12px; }
+.btn-full { width: 100%; }
+
+/* Form */
+.form-group { margin-bottom: 10px; }
+.form-label { font-size: 12px; font-weight: 500; color: var(--text3); text-transform: uppercase; letter-spacing: 0.4px; margin-bottom: 5px; display: block; }
+
+input[type="text"], input[type="number"], select {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 15px;
+  color: var(--text);
+  outline: none;
+  height: 42px;
+  -webkit-appearance: none;
+}
+
+select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%239e9c96' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 12px center; padding-right: 32px; }
+
+/* Stat grid */
+.stat-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 16px; }
+.stat { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; }
+.stat-val { font-size: 24px; font-weight: 600; letter-spacing: -1px; font-family: 'DM Mono', monospace; }
+.stat-lbl { font-size: 11px; color: var(--text3); margin-top: 2px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.4px; }
+
+/* Period tabs */
+.period-tabs { display: flex; gap: 6px; margin-bottom: 16px; }
+.period-tab { flex: 1; padding: 8px; border: 1px solid var(--border); border-radius: 20px; background: var(--surface); font-size: 13px; font-weight: 400; cursor: pointer; color: var(--text2); text-align: center; font-family: 'DM Sans', sans-serif; }
+.period-tab.active { background: var(--text); color: var(--bg); border-color: var(--text); font-weight: 500; }
+
+/* Summary bars */
+.sum-row { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--border); }
+.sum-row:last-child { border-bottom: none; }
+.sum-date { font-size: 12px; color: var(--text2); width: 90px; flex-shrink: 0; }
+.bar-wrap { flex: 1; height: 5px; background: var(--surface2); border-radius: 3px; overflow: hidden; }
+.bar-fill { height: 100%; background: var(--border2); border-radius: 3px; }
+.sum-cal { font-size: 12px; font-weight: 500; font-family: 'DM Mono', monospace; color: var(--text2); min-width: 68px; text-align: right; }
+
+/* Drop zone */
+.drop-zone {
+  border: 2px dashed var(--border2);
+  border-radius: var(--radius-lg);
+  padding: 32px 16px;
+  text-align: center;
+  cursor: pointer;
+  margin-bottom: 14px;
+}
+.drop-zone:active { background: var(--accent-bg); border-color: var(--accent); }
+.drop-icon { font-size: 32px; margin-bottom: 8px; }
+.drop-title { font-size: 15px; font-weight: 500; margin-bottom: 4px; }
+.drop-sub { font-size: 12px; color: var(--text3); }
+
+/* Notice */
+.notice { padding: 10px 14px; border-radius: var(--radius); font-size: 13px; margin-bottom: 12px; }
+.notice.info { background: var(--info-bg); color: var(--info-text); }
+.notice.success { background: var(--accent-bg); color: var(--accent-text); }
+.notice.warn { background: var(--warn-bg); color: var(--warn-text); }
+
+/* Table */
+.table-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 12px; -webkit-overflow-scrolling: touch; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 360px; }
+thead th { text-align: left; padding: 8px 10px; background: var(--surface2); font-weight: 500; font-size: 11px; text-transform: uppercase; letter-spacing: 0.4px; color: var(--text3); border-bottom: 1px solid var(--border); }
+tbody td { padding: 9px 10px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+tbody tr:last-child td { border-bottom: none; }
+
+/* Section label */
+.section-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.6px; color: var(--text3); font-weight: 500; margin-bottom: 8px; margin-top: 4px; }
+
+/* OneDrive banner */
+.onedrive-banner {
+  background: var(--info-bg);
+  border: 1px solid #c0d4ea;
+  border-radius: var(--radius);
+  padding: 12px 14px;
+  margin-bottom: 14px;
+  font-size: 13px;
+  color: var(--info-text);
+  line-height: 1.5;
+}
+.onedrive-banner strong { font-weight: 600; }
+
+/* Empty */
+.empty { text-align: center; padding: 36px 16px; color: var(--text3); font-size: 14px; line-height: 1.6; }
+
+/* Modal overlay */
+.modal-overlay {
+  display: none;
+  position: absolute;
+  inset: 0;
+  background: rgba(0,0,0,0.4);
+  z-index: 300;
+  align-items: flex-end;
+  justify-content: center;
+}
+.modal-overlay.open { display: flex; }
+.modal-sheet {
+  background: var(--surface);
+  border-radius: 18px 18px 0 0;
+  padding: 20px 20px calc(20px + var(--safe-bottom));
+  width: 100%;
+  max-height: 80vh;
+  overflow-y: auto;
+}
+.modal-handle { width: 36px; height: 4px; background: var(--border2); border-radius: 2px; margin: 0 auto 18px; }
+.modal-title { font-size: 17px; font-weight: 600; margin-bottom: 16px; }
+
+::-webkit-scrollbar { display: none; }
+</style>
+</head>
+<body>
+
+<div class="app">
+  <div class="content" id="content">
+
+    <!-- Daily Log -->
+    <div class="page active" id="page-log">
+      <div class="page-header">
+        <div>
+          <div class="page-title">Daily log</div>
+          <div class="page-sub" id="log-date-sub">Today</div>
+        </div>
+        <button class="btn btn-sm" onclick="goToday()">Today</button>
+      </div>
+
+      <div class="date-nav">
+        <button class="icon-btn" onclick="changeDay(-1)">&#8592;</button>
+        <div class="date-nav-label" id="day-label">—</div>
+        <button class="icon-btn" onclick="changeDay(1)">&#8594;</button>
+      </div>
+
+      <div class="total-bar">
+        <div class="total-lbl">Total calories</div>
+        <div>
+          <span class="total-num" id="today-total">0</span>
+          <span class="total-unit">kcal</span>
+        </div>
+      </div>
+
+      <div class="search-wrap">
+        <input type="text" class="search-input" id="food-search" placeholder="Search and add food…" oninput="searchFood()" autocomplete="off" autocorrect="off" autocapitalize="off">
+        <div class="dropdown" id="food-dropdown" style="display:none"></div>
+      </div>
+
+      <div id="log-list"></div>
+    </div>
+
+    <!-- Food Database -->
+    <div class="page" id="page-db">
+      <div class="page-header">
+        <div>
+          <div class="page-title">Food database</div>
+          <div class="page-sub" id="db-sub">0 items</div>
+        </div>
+        <button class="btn btn-primary btn-sm" onclick="openAddModal()">+ Add</button>
+      </div>
+
+      <div class="form-group">
+        <input type="text" id="db-filter" placeholder="Filter foods…" oninput="renderDB()" autocorrect="off" autocapitalize="off">
+      </div>
+      <div style="display:flex;gap:8px;margin-bottom:14px">
+        <button class="btn btn-sm" style="flex:1" onclick="setTypeFilter('')" id="tf-all">All</button>
+        <button class="btn btn-sm" style="flex:1" onclick="setTypeFilter('meal')" id="tf-meal">Meals</button>
+        <button class="btn btn-sm" style="flex:1" onclick="setTypeFilter('ingredient')" id="tf-ingredient">Ingredients</button>
+        <button class="btn btn-sm" style="flex:1" onclick="setTypeFilter('snack')" id="tf-snack">Snacks</button>
+      </div>
+
+      <div id="db-list"></div>
+    </div>
+
+    <!-- Import / Export -->
+    <div class="page" id="page-import">
+      <div class="page-header">
+        <div>
+          <div class="page-title">Import / Export</div>
+          <div class="page-sub">Sync with OneDrive & Excel</div>
+        </div>
+      </div>
+
+      <div class="onedrive-banner">
+        <strong>OneDrive workflow</strong><br>
+        Keep your food list as an Excel file in OneDrive. Import it here to load your database. Export anytime to save a backup or update it on desktop.
+      </div>
+
+      <div class="section-label" style="margin-bottom:10px">Import from Excel</div>
+
+      <div class="drop-zone" onclick="document.getElementById('file-input').click()">
+        <div class="drop-icon">⇡</div>
+        <div class="drop-title">Tap to choose .xlsx file</div>
+        <div class="drop-sub">Name · Type · Calories (kcal) · Per Unit</div>
+      </div>
+      <input type="file" id="file-input" accept=".xlsx,.xls" style="display:none" onchange="handleFile(this.files[0])">
+
+      <div id="import-notice"></div>
+      <div id="preview-area"></div>
+      <div id="import-actions"></div>
+
+      <div class="section-label" style="margin-top:20px;margin-bottom:10px">Export to OneDrive</div>
+
+      <div class="card" style="display:flex;justify-content:space-between;align-items:center;gap:12px">
+        <div>
+          <div style="font-size:14px;font-weight:500;margin-bottom:2px">Export database</div>
+          <div style="font-size:12px;color:var(--text3)"><span id="export-count">0</span> items · opens Share sheet to save to OneDrive</div>
+        </div>
+        <button class="btn btn-accent" onclick="exportDB()">Export</button>
+      </div>
+
+      <div class="card" style="display:flex;justify-content:space-between;align-items:center;gap:12px">
+        <div>
+          <div style="font-size:14px;font-weight:500;margin-bottom:2px">Blank template</div>
+          <div style="font-size:12px;color:var(--text3)">Download pre-formatted starter file</div>
+        </div>
+        <button class="btn" onclick="downloadTemplate()">Template</button>
+      </div>
+    </div>
+
+    <!-- Summary -->
+    <div class="page" id="page-summary">
+      <div class="page-header">
+        <div>
+          <div class="page-title">Summary</div>
+          <div class="page-sub">Calorie intake over time</div>
+        </div>
+      </div>
+
+      <div class="period-tabs">
+        <button class="period-tab active" onclick="setPeriod('day')">Day</button>
+        <button class="period-tab" onclick="setPeriod('week')">Week</button>
+        <button class="period-tab" onclick="setPeriod('month')">Month</button>
+      </div>
+
+      <div class="date-nav">
+        <button class="icon-btn" onclick="changeSummaryRef(-1)">&#8592;</button>
+        <div class="date-nav-label" id="summary-period-label">—</div>
+        <button class="icon-btn" onclick="changeSummaryRef(1)">&#8594;</button>
+      </div>
+
+      <div id="summary-content"></div>
+    </div>
+
+  </div>
+
+  <!-- Bottom Nav -->
+  <nav class="bottom-nav">
+    <button class="nav-btn active" onclick="showPage('log')" id="nav-log">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+      Log
+    </button>
+    <button class="nav-btn" onclick="showPage('db')" id="nav-db">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v5c0 1.66 4.03 3 9 3s9-1.34 9-3V5"/><path d="M3 10v5c0 1.66 4.03 3 9 3s9-1.34 9-3v-5"/><path d="M3 15v4c0 1.66 4.03 3 9 3s9-1.34 9-3v-4"/></svg>
+      Database
+    </button>
+    <button class="nav-btn" onclick="showPage('import')" id="nav-import">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><polyline points="8 17 12 21 16 17"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.88 18.09A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.29"/></svg>
+      Sync
+    </button>
+    <button class="nav-btn" onclick="showPage('summary')" id="nav-summary">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+      Summary
+    </button>
+  </nav>
+</div>
+
+<!-- Add Food Modal -->
+<div class="modal-overlay" id="add-modal" onclick="closeAddModal(event)">
+  <div class="modal-sheet" onclick="event.stopPropagation()">
+    <div class="modal-handle"></div>
+    <div class="modal-title">Add food item</div>
+    <div class="form-group">
+      <label class="form-label">Name</label>
+      <input type="text" id="m-name" placeholder="e.g. Grilled chicken" autocorrect="off">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Type</label>
+      <select id="m-type">
+        <option value="meal">Meal</option>
+        <option value="ingredient">Ingredient</option>
+        <option value="snack">Snack</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Calories (kcal)</label>
+      <input type="number" id="m-cal" placeholder="e.g. 350" min="0" inputmode="decimal">
+    </div>
+    <div class="form-group" style="margin-bottom:20px">
+      <label class="form-label">Per unit</label>
+      <input type="text" id="m-unit" placeholder="e.g. 100g, 1 cup, 1 bar" autocorrect="off">
+    </div>
+    <button class="btn btn-primary btn-full" style="margin-bottom:10px" onclick="addFoodModal()">Add item</button>
+    <button class="btn btn-full" onclick="closeAddModal()">Cancel</button>
+  </div>
+</div>
+
+<!-- Edit Food Modal -->
+<div class="modal-overlay" id="edit-modal" onclick="closeEditModal(event)">
+  <div class="modal-sheet" onclick="event.stopPropagation()">
+    <div class="modal-handle"></div>
+    <div class="modal-title">Edit item</div>
+    <input type="hidden" id="e-id">
+    <div class="form-group">
+      <label class="form-label">Name</label>
+      <input type="text" id="e-name" autocorrect="off">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Type</label>
+      <select id="e-type">
+        <option value="meal">Meal</option>
+        <option value="ingredient">Ingredient</option>
+        <option value="snack">Snack</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Calories (kcal)</label>
+      <input type="number" id="e-cal" min="0" inputmode="decimal">
+    </div>
+    <div class="form-group" style="margin-bottom:20px">
+      <label class="form-label">Per unit</label>
+      <input type="text" id="e-unit" autocorrect="off">
+    </div>
+    <button class="btn btn-primary btn-full" style="margin-bottom:10px" onclick="saveEditModal()">Save changes</button>
+    <button class="btn btn-danger btn-full" style="margin-bottom:10px" onclick="deleteFoodModal()">Delete item</button>
+    <button class="btn btn-full" onclick="closeEditModal()">Cancel</button>
+  </div>
+</div>
+
+<!-- Qty Modal -->
+<div class="modal-overlay" id="qty-modal" onclick="closeQtyModal(event)">
+  <div class="modal-sheet" onclick="event.stopPropagation()">
+    <div class="modal-handle"></div>
+    <div class="modal-title" id="qty-title">Add serving</div>
+    <div style="font-size:13px;color:var(--text3);margin-bottom:16px" id="qty-sub"></div>
+    <div class="form-group" style="margin-bottom:20px">
+      <label class="form-label">Number of servings</label>
+      <input type="number" id="qty-input" value="1" min="0.1" step="0.1" inputmode="decimal">
+    </div>
+    <button class="btn btn-primary btn-full" style="margin-bottom:10px" onclick="confirmQty()">Add to log</button>
+    <button class="btn btn-full" onclick="closeQtyModal()">Cancel</button>
+  </div>
+</div>
+
+<script>
+const STORAGE_KEY = 'cal_tracker_pwa_v1';
+let state = { foods:[], logs:{}, viewDate:today(), summaryPeriod:'day', summaryRef:today() };
+let typeFilter = '';
+let pendingFoodIdx = null;
+let previewRows = [];
+
+function today() { return new Date().toISOString().slice(0,10); }
+
+function loadState() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) { const s=JSON.parse(raw); state.foods=s.foods||[]; state.logs=s.logs||{}; }
+  } catch(e) {}
+  render();
+}
+
+function saveState() {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify({foods:state.foods,logs:state.logs})); } catch(e) {}
+}
+
+function render() { renderLog(); renderDB(); renderSummary(); updateCounts(); }
+
+function updateCounts() {
+  document.getElementById('db-sub').textContent = state.foods.length + ' item' + (state.foods.length!==1?'s':'');
+  document.getElementById('export-count').textContent = state.foods.length;
+}
+
+function showPage(p) {
+  document.querySelectorAll('.page').forEach(el=>el.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(el=>el.classList.remove('active'));
+  document.getElementById('page-'+p).classList.add('active');
+  document.getElementById('nav-'+p).classList.add('active');
+  if (p==='summary') renderSummary();
+  document.getElementById('content').scrollTo(0,0);
+}
+
+function formatDate(iso) {
+  return new Date(iso+'T12:00:00').toLocaleDateString(undefined,{weekday:'short',month:'short',day:'numeric'});
+}
+
+function changeDay(d) {
+  const dt=new Date(state.viewDate+'T12:00:00'); dt.setDate(dt.getDate()+d);
+  state.viewDate=dt.toISOString().slice(0,10); renderLog();
+}
+
+function goToday() { state.viewDate=today(); renderLog(); }
+
+function renderLog() {
+  const isToday=state.viewDate===today();
+  document.getElementById('day-label').textContent=formatDate(state.viewDate);
+  document.getElementById('log-date-sub').textContent=isToday?'Today':'';
+  const entries=state.logs[state.viewDate]||[];
+  document.getElementById('today-total').textContent=Math.round(entries.reduce((s,e)=>s+e.cal,0));
+  const el=document.getElementById('log-list');
+  if (!entries.length) { el.innerHTML='<div class="empty">Nothing logged yet.<br>Search above to add food.</div>'; return; }
+  el.innerHTML='<div class="card" style="padding:0 16px">'+entries.map((e,i)=>`
+    <div class="list-item">
+      <div class="item-name">${e.name}<br><span class="item-meta">${e.qty} × ${e.unit}</span></div>
+      <div class="item-cal">${Math.round(e.cal)} kcal</div>
+      <button class="btn btn-sm btn-danger" onclick="removeEntry(${i})">✕</button>
+    </div>`).join('')+'</div>';
+}
+
+function searchFood() {
+  const q=document.getElementById('food-search').value.toLowerCase();
+  const dd=document.getElementById('food-dropdown');
+  if (!q) { dd.style.display='none'; return; }
+  const matches=state.foods.filter(f=>f.name.toLowerCase().includes(q)).slice(0,8);
+  if (!matches.length) { dd.style.display='none'; return; }
+  dd.innerHTML=matches.map(f=>`
+    <div class="dd-item" onclick="selectFood(${state.foods.indexOf(f)})">
+      <div><span class="dd-name">${f.name}</span> <span class="badge ${f.type}">${f.type}</span></div>
+      <div class="dd-cal">${f.cal} kcal/${f.unit}</div>
+    </div>`).join('');
+  dd.style.display='';
+}
+
+function selectFood(idx) {
+  pendingFoodIdx=idx;
+  const f=state.foods[idx];
+  document.getElementById('food-search').value='';
+  document.getElementById('food-dropdown').style.display='none';
+  document.getElementById('qty-title').textContent=f.name;
+  document.getElementById('qty-sub').textContent='1 serving = '+f.unit+' = '+f.cal+' kcal';
+  document.getElementById('qty-input').value='1';
+  document.getElementById('qty-modal').classList.add('open');
+  setTimeout(()=>document.getElementById('qty-input').focus(),300);
+}
+
+function confirmQty() {
+  const qty=parseFloat(document.getElementById('qty-input').value);
+  if (!qty||isNaN(qty)||qty<=0) { alert('Please enter a valid quantity.'); return; }
+  const f=state.foods[pendingFoodIdx];
+  if (!state.logs[state.viewDate]) state.logs[state.viewDate]=[];
+  state.logs[state.viewDate].push({name:f.name,unit:f.unit,qty:qty,cal:f.cal*qty});
+  closeQtyModal();
+  saveState(); renderLog();
+}
+
+function closeQtyModal(e) {
+  if (e && e.target!==document.getElementById('qty-modal')) return;
+  document.getElementById('qty-modal').classList.remove('open');
+  pendingFoodIdx=null;
+}
+
+function removeEntry(i) {
+  state.logs[state.viewDate].splice(i,1);
+  saveState(); renderLog();
+}
+
+/* DB */
+function setTypeFilter(t) {
+  typeFilter=t;
+  ['all','meal','ingredient','snack'].forEach(k=>{
+    document.getElementById('tf-'+k).classList.toggle('btn-primary',k===t||(k==='all'&&t===''));
+  });
+  renderDB();
+}
+
+function renderDB() {
+  const q=(document.getElementById('db-filter')?.value||'').toLowerCase();
+  let items=[...state.foods].sort((a,b)=>a.name.localeCompare(b.name));
+  if (q) items=items.filter(f=>f.name.toLowerCase().includes(q));
+  if (typeFilter) items=items.filter(f=>f.type===typeFilter);
+  const el=document.getElementById('db-list');
+  if (!items.length) { el.innerHTML='<div class="empty">No items found.<br>Add items or import from Excel.</div>'; return; }
+  el.innerHTML='<div class="card" style="padding:0 16px">'+items.map(f=>`
+    <div class="list-item" onclick="openEditModal(${f.id})">
+      <div class="item-name">${f.name}<br><span class="item-meta">${f.cal} kcal / ${f.unit}</span></div>
+      <span class="badge ${f.type}">${f.type}</span>
+      <span style="color:var(--text3);font-size:18px;padding-left:8px">›</span>
+    </div>`).join('')+'</div>';
+  updateCounts();
+}
+
+/* Modals */
+function openAddModal() {
+  document.getElementById('m-name').value='';
+  document.getElementById('m-cal').value='';
+  document.getElementById('m-unit').value='';
+  document.getElementById('m-type').value='meal';
+  document.getElementById('add-modal').classList.add('open');
+  setTimeout(()=>document.getElementById('m-name').focus(),300);
+}
+
+function closeAddModal(e) {
+  if (e && e.target!==document.getElementById('add-modal')) return;
+  document.getElementById('add-modal').classList.remove('open');
+}
+
+function addFoodModal() {
+  const name=document.getElementById('m-name').value.trim();
+  const type=document.getElementById('m-type').value;
+  const cal=parseFloat(document.getElementById('m-cal').value);
+  const unit=document.getElementById('m-unit').value.trim()||'serving';
+  if (!name||isNaN(cal)||cal<=0) { alert('Please enter a name and valid calories.'); return; }
+  state.foods.push({id:Date.now(),name,type,cal,unit});
+  document.getElementById('add-modal').classList.remove('open');
+  saveState(); renderDB();
+}
+
+function openEditModal(id) {
+  const f=state.foods.find(x=>x.id===id);
+  if (!f) return;
+  document.getElementById('e-id').value=f.id;
+  document.getElementById('e-name').value=f.name;
+  document.getElementById('e-type').value=f.type;
+  document.getElementById('e-cal').value=f.cal;
+  document.getElementById('e-unit').value=f.unit;
+  document.getElementById('edit-modal').classList.add('open');
+}
+
+function closeEditModal(e) {
+  if (e && e.target!==document.getElementById('edit-modal')) return;
+  document.getElementById('edit-modal').classList.remove('open');
+}
+
+function saveEditModal() {
+  const id=parseInt(document.getElementById('e-id').value);
+  const f=state.foods.find(x=>x.id===id);
+  if (!f) return;
+  const name=document.getElementById('e-name').value.trim();
+  const cal=parseFloat(document.getElementById('e-cal').value);
+  const unit=document.getElementById('e-unit').value.trim();
+  if (!name||isNaN(cal)||cal<=0) { alert('Please enter a name and valid calories.'); return; }
+  f.name=name; f.type=document.getElementById('e-type').value; f.cal=cal; f.unit=unit||f.unit;
+  document.getElementById('edit-modal').classList.remove('open');
+  saveState(); renderDB();
+}
+
+function deleteFoodModal() {
+  const id=parseInt(document.getElementById('e-id').value);
+  state.foods=state.foods.filter(f=>f.id!==id);
+  document.getElementById('edit-modal').classList.remove('open');
+  saveState(); renderDB();
+}
+
+/* Import / Export */
+function handleFile(file) {
+  if (!file) return;
+  if (!file.name.match(/\.xlsx?$/i)) { setNotice('warn','Please choose an .xlsx file.'); return; }
+  const reader=new FileReader();
+  reader.onload=function(e) {
+    try {
+      const wb=XLSX.read(e.target.result,{type:'array'});
+      const ws=wb.Sheets[wb.SheetNames[0]];
+      const rows=XLSX.utils.sheet_to_json(ws,{defval:''});
+      parseRows(rows,file.name);
+    } catch(err) { setNotice('warn','Could not read file.'); }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function normaliseKey(k) { return k.toLowerCase().replace(/[^a-z]/g,''); }
+
+function parseRows(rows,filename) {
+  if (!rows.length) { setNotice('warn','File appears empty.'); return; }
+  const km={};
+  for (const k of Object.keys(rows[0])) {
+    const n=normaliseKey(k);
+    if (n.includes('name')) km.name=k;
+    else if (n.includes('type')) km.type=k;
+    else if (n.includes('cal')) km.cal=k;
+    else if (n.includes('unit')||n.includes('per')) km.unit=k;
+  }
+  if (!km.name||!km.cal) { setNotice('warn','Could not find Name and Calories columns.'); return; }
+  const validTypes=['meal','ingredient','snack'];
+  previewRows=rows.map((r,i)=>({
+    id:Date.now()+i,
+    name:String(r[km.name]||'').trim(),
+    type:validTypes.includes(String(r[km.type]||'').toLowerCase().trim())?String(r[km.type]).toLowerCase().trim():'meal',
+    cal:parseFloat(r[km.cal])||0,
+    unit:String(r[km.unit]||'serving').trim()||'serving',
+  })).filter(r=>r.name&&r.cal>0);
+  if (!previewRows.length) { setNotice('warn','No valid rows found.'); return; }
+  setNotice('info',`Found ${previewRows.length} item${previewRows.length!==1?'s':''} in ${filename}.`);
+  renderPreview();
+  document.getElementById('import-actions').innerHTML=`
+    <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:8px">
+      <button class="btn btn-primary btn-full" onclick="confirmImport('replace')">Replace database (${previewRows.length} items)</button>
+      <button class="btn btn-accent btn-full" onclick="confirmImport('merge')">Merge with existing</button>
+      <button class="btn btn-full" onclick="cancelImport()">Cancel</button>
+    </div>`;
+}
+
+function renderPreview() {
+  const show=previewRows.slice(0,30);
+  document.getElementById('preview-area').innerHTML=`
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th style="width:40%">Name</th><th style="width:18%">Type</th><th style="width:22%">Calories</th><th>Unit</th></tr></thead>
+        <tbody>${show.map(r=>`<tr>
+          <td>${r.name}</td>
+          <td><span class="badge ${r.type}">${r.type}</span></td>
+          <td style="font-family:'DM Mono',monospace">${Math.round(r.cal)}</td>
+          <td style="color:var(--text3)">${r.unit}</td>
+        </tr>`).join('')}</tbody>
+      </table>
+    </div>
+    ${previewRows.length>30?`<div style="font-size:12px;color:var(--text3);margin-bottom:8px">Showing 30 of ${previewRows.length} items.</div>`:''}`;
+}
+
+function confirmImport(mode) {
+  let msg='';
+  if (mode==='replace') { state.foods=previewRows; msg=`Database replaced with ${state.foods.length} items.`; }
+  else {
+    const ex=new Set(state.foods.map(f=>f.name.toLowerCase()));
+    const newOnes=previewRows.filter(r=>!ex.has(r.name.toLowerCase()));
+    const skipped=previewRows.length-newOnes.length;
+    state.foods=[...state.foods,...newOnes];
+    msg=`Added ${newOnes.length} new item${newOnes.length!==1?'s':''}.`+(skipped?` Skipped ${skipped} duplicate${skipped!==1?'s':''}.`:'');
+  }
+  setNotice('success',msg);
+  document.getElementById('preview-area').innerHTML='';
+  document.getElementById('import-actions').innerHTML='';
+  document.getElementById('file-input').value='';
+  previewRows=[];
+  saveState(); renderDB();
+}
+
+function cancelImport() {
+  previewRows=[];
+  document.getElementById('preview-area').innerHTML='';
+  document.getElementById('import-actions').innerHTML='';
+  document.getElementById('import-notice').innerHTML='';
+  document.getElementById('file-input').value='';
+}
+
+function setNotice(type,html) {
+  document.getElementById('import-notice').innerHTML=`<div class="notice ${type}">${html}</div>`;
+}
+
+function exportDB() {
+  if (!state.foods.length) { alert('No items to export.'); return; }
+  const rows=[...state.foods].sort((a,b)=>a.name.localeCompare(b.name)).map(f=>({'Name':f.name,'Type':f.type,'Calories (kcal)':f.cal,'Per Unit':f.unit}));
+  const ws=XLSX.utils.json_to_sheet(rows);
+  ws['!cols']=[{wch:28},{wch:14},{wch:18},{wch:18}];
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,'Foods');
+  XLSX.writeFile(wb,'calorie_database.xlsx');
+}
+
+function downloadTemplate() {
+  const rows=[
+    {'Name':'Grilled chicken breast','Type':'meal','Calories (kcal)':165,'Per Unit':'100g','Notes':'Skinless'},
+    {'Name':'Brown rice','Type':'ingredient','Calories (kcal)':216,'Per Unit':'1 cup cooked','Notes':''},
+    {'Name':'Banana','Type':'snack','Calories (kcal)':89,'Per Unit':'1 medium','Notes':''},
+    {'Name':'Greek yoghurt','Type':'snack','Calories (kcal)':100,'Per Unit':'170g tub','Notes':'Plain'},
+    {'Name':'Scrambled eggs','Type':'meal','Calories (kcal)':220,'Per Unit':'2 eggs','Notes':''},
+    {'Name':'Protein bar','Type':'snack','Calories (kcal)':200,'Per Unit':'1 bar','Notes':'Brand varies'},
+  ];
+  const ws=XLSX.utils.json_to_sheet(rows);
+  ws['!cols']=[{wch:28},{wch:14},{wch:18},{wch:18},{wch:20}];
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,'Foods');
+  XLSX.writeFile(wb,'calorie_tracker_template.xlsx');
+}
+
+/* Summary */
+function setPeriod(p) {
+  state.summaryPeriod=p; state.summaryRef=today();
+  document.querySelectorAll('.period-tab').forEach((el,i)=>el.classList.toggle('active',['day','week','month'][i]===p));
+  renderSummary();
+}
+
+function changeSummaryRef(d) {
+  const ref=new Date(state.summaryRef+'T12:00:00');
+  if (state.summaryPeriod==='day') ref.setDate(ref.getDate()+d);
+  else if (state.summaryPeriod==='week') ref.setDate(ref.getDate()+d*7);
+  else ref.setMonth(ref.getMonth()+d);
+  state.summaryRef=ref.toISOString().slice(0,10);
+  renderSummary();
+}
+
+function getDays(start,end) {
+  const days=[],cur=new Date(start+'T12:00:00'),last=new Date(end+'T12:00:00');
+  while(cur<=last){days.push(cur.toISOString().slice(0,10));cur.setDate(cur.getDate()+1);}
+  return days;
+}
+
+function renderSummary() {
+  const el=document.getElementById('summary-content'); if (!el) return;
+  const p=state.summaryPeriod, ref=new Date(state.summaryRef+'T12:00:00');
+  let days=[],label='';
+  if (p==='day') { days=[state.summaryRef]; label=formatDate(state.summaryRef); }
+  else if (p==='week') {
+    const dow=ref.getDay(),mon=new Date(ref); mon.setDate(ref.getDate()-(dow===0?6:dow-1));
+    const sun=new Date(mon); sun.setDate(mon.getDate()+6);
+    days=getDays(mon.toISOString().slice(0,10),sun.toISOString().slice(0,10));
+    label=formatDate(days[0])+' – '+formatDate(days[days.length-1]);
+  } else {
+    const y=ref.getFullYear(),m=ref.getMonth();
+    days=getDays(new Date(y,m,1).toISOString().slice(0,10),new Date(y,m+1,0).toISOString().slice(0,10));
+    label=ref.toLocaleDateString(undefined,{month:'long',year:'numeric'});
+  }
+  document.getElementById('summary-period-label').textContent=label;
+  const totals=days.map(d=>({date:d,cal:(state.logs[d]||[]).reduce((s,e)=>s+e.cal,0)}));
+  const logged=totals.filter(t=>t.cal>0);
+  const totalCal=totals.reduce((s,t)=>s+t.cal,0);
+  const avg=logged.length?totalCal/logged.length:0;
+  const max=logged.length?Math.max(...logged.map(t=>t.cal)):0;
+  let html=`<div class="stat-grid">
+    <div class="stat"><div class="stat-val">${Math.round(totalCal)}</div><div class="stat-lbl">Total kcal</div></div>
+    <div class="stat"><div class="stat-val">${Math.round(avg)}</div><div class="stat-lbl">Daily avg</div></div>
+    <div class="stat"><div class="stat-val">${logged.length}</div><div class="stat-lbl">Days logged</div></div>
+    <div class="stat"><div class="stat-val">${Math.round(max)}</div><div class="stat-lbl">Peak day</div></div>
+  </div>`;
+  if (p==='day') {
+    const entries=state.logs[state.summaryRef]||[];
+    if (!entries.length) { html+='<div class="empty">No entries for this day.</div>'; }
+    else {
+      html+='<div class="card" style="padding:0 16px">'+entries.map(e=>`
+        <div class="list-item">
+          <div class="item-name">${e.name}<br><span class="item-meta">${e.qty}× ${e.unit}</span></div>
+          <div class="item-cal">${Math.round(e.cal)} kcal</div>
+        </div>`).join('')+'</div>';
+    }
+  } else if (logged.length) {
+    html+='<div class="card" style="padding:14px 16px">'+totals.filter(t=>t.cal>0).map(t=>{
+      const pct=max>0?Math.round((t.cal/max)*100):0;
+      return `<div class="sum-row">
+        <div class="sum-date">${formatDate(t.date)}</div>
+        <div class="bar-wrap"><div class="bar-fill" style="width:${pct}%"></div></div>
+        <div class="sum-cal">${Math.round(t.cal)} kcal</div>
+      </div>`;
+    }).join('')+'</div>';
+  } else { html+='<div class="empty">No data for this period.</div>'; }
+  el.innerHTML=html;
+}
+
+document.addEventListener('click', e => {
+  if (!e.target.closest('.search-wrap')) document.getElementById('food-dropdown').style.display='none';
+});
+
+/* Service worker */
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js').catch(()=>{});
+  });
+}
+
+/* Init */
+setTypeFilter('');
+loadState();
+</script>
+</body>
+</html>
