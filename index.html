@@ -490,6 +490,20 @@ function today(){ return new Date().toISOString().slice(0,10); }
 function formatDate(iso){ return new Date(iso+'T12:00:00').toLocaleDateString(undefined,{weekday:'short',month:'short',day:'numeric'}); }
 
 function loadState(){
+  // Migrate from any previous storage key
+  const oldKeys=['cal_tracker_pwa_v1','calorie_tracker_v1','calorie_tracker_v2','calorie_tracker_v3','cal_tracker_v1','cal_tracker_v2','cal_tracker_v3'];
+  try{
+    if(!localStorage.getItem(SK)){
+      for(const k of oldKeys){
+        const raw=localStorage.getItem(k);
+        if(raw){
+          localStorage.setItem(SK,raw);
+          console.log('Cal Tracker: migrated data from',k);
+          break;
+        }
+      }
+    }
+  }catch(e){}
   try{ const r=localStorage.getItem(SK); if(r){ const s=JSON.parse(r); S.foods=s.foods||[]; S.logs=s.logs||{}; S.settings=Object.assign(S.settings,s.settings||{}); S.viewDate=s.viewDate||today(); S.summaryPeriod=s.summaryPeriod||'day'; S.summaryRef=s.summaryRef||today(); }}catch(e){}
   if(!S.viewDate) S.viewDate=today();
   if(!S.summaryPeriod) S.summaryPeriod='day';
