@@ -351,6 +351,12 @@ input:checked+.toggle-slider:before{transform:translateX(18px);}
           <button class="btn btn-sm btn-accent" onclick="markBackupDone()">Mark done</button>
         </div>
       </div>
+      <div class="card" style="border-color:#e8c0c0;">
+        <div class="section-label" style="margin-bottom:10px;color:var(--danger)">Data recovery</div>
+        <div style="font-size:13px;color:var(--text2);margin-bottom:12px;line-height:1.5">If your data is missing after an update, tap Scan to find any previous saved data on this device.</div>
+        <button class="btn btn-full" onclick="scanStorage()" style="margin-bottom:8px">Scan for previous data</button>
+        <div id="recovery-results"></div>
+      </div>
       <div class="card" style="background:var(--surface2);">
         <div style="font-size:12px;color:var(--text3);line-height:1.6;">
           <strong style="color:var(--text2)">About Cal Tracker</strong><br>
@@ -1200,6 +1206,77 @@ function renderSummary(){
     html+='</div>';
   }else{html+='<div class="empty">No data for this period.</div>';}
   el.innerHTML=html;
+}
+
+function scanStorage(){
+  const el=document.getElementById('recovery-results');
+  const allKeys=[];
+  try{for(let i=0;i<localStorage.length;i++){allKeys.push(localStorage.key(i));}}catch(e){}
+
+  if(!allKeys.length){
+    el.innerHTML='<div class="notice warn">No data found in storage on this device.</div>';
+    return;
+  }
+
+  // Summarise each key
+  const results=allKeys.map(k=>{
+    try{
+      const raw=localStorage.getItem(k);
+      if(!raw)return null;
+      const parsed=JSON.parse(raw);
+      const foods=(parsed.foods||[]).length;
+      const logDays=Object.keys(parsed.logs||{}).filter(d=>(parsed.logs[d]||[]).length>0).length;
+      const weightDays=Object.keys(parsed.weight||{}).filter(d=>parsed.weight[d]>0).length;
+      const waterDays=Object.keys(parsed.water||{}).filter(d=>parsed.water[d]>0).length;
+      const isCurrentKey=k===SK;
+      return{key:k,foods,logDays,weightDays,waterDays,isCurrentKey,hasData:foods>0||logDays>0};
+    }catch(e){
+      return{key:k,foods:0,logDays:0,weightDays:0,waterDays:0,isCurrentKey:k===SK,hasData:false,raw:true};
+    }
+  }).filter(Boolean);
+
+  if(!results.length){
+    el.innerHTML='<div class="notice warn">No recognisable Cal Tracker data found.</div>';
+    return;
+  }
+
+  let html='<div style="margin-top:4px">';
+  results.forEach(r=>{
+    const badge=r.isCurrentKey?'<span style="font-size:10px;background:var(--accent-bg);color:var(--accent-text);padding:1px 6px;border-radius:10px;margin-left:6px">current</span>':'';
+    const summary=r.hasData?`${r.foods} foods · ${r.logDays} days logged${r.weightDays?` · ${r.weightDays} weight entries`:''}`:r.raw?'Non-JSON data':'Empty';
+    html+=`<div style="border:1px solid var(--border);border-radius:var(--r);padding:12px;margin-bottom:8px">
+      <div style="font-size:12px;font-weight:600;font-family:'DM Mono',monospace;margin-bottom:4px;word-break:break-all">${r.key}${badge}</div>
+      <div style="font-size:12px;color:var(--text2);margin-bottom:8px">${summary}</div>
+      ${!r.isCurrentKey&&r.hasData?`<button class="btn btn-accent btn-sm" onclick="restoreFromKey('${r.key}')">Restore this data</button>`:''}
+      ${!r.isCurrentKey&&!r.hasData?`<span style="font-size:11px;color:var(--text3)">No usable data</span>`:''}
+    </div>`;
+  });
+  html+='</div>';
+  el.innerHTML=html;
+}
+
+function restoreFromKey(key){
+  try{
+    const raw=localStorage.getItem(key);
+    if(!raw){alert('Could not read that key.');return;}
+    const parsed=JSON.parse(raw);
+    // Merge — never overwrite existing data, only fill in what is missing
+    const existingLogDays=Object.keys(S.logs).filter(d=>(S.logs[d]||[]).length>0).length;
+    const incomingLogDays=Object.keys(parsed.logs||{}).filter(d=>(parsed.logs[d]||[]).length>0).length;
+    const foods=(parsed.foods||[]).length;
+    const msg=`Found:\n• ${foods} food items\n• ${incomingLogDays} days of log entries\n\nYour current data has ${existingLogDays} days logged.\n\nRestore will merge — existing entries kept, missing days added.\n\nProceed?`;
+    if(!confirm(msg))return;
+    // Merge foods — add any not already present by name
+    const existingNames=new Set(S.foods.map(f=>f.name.toLowerCase()));
+    (parsed.foods||[]).forEach(f=>{if(!existingNames.has(f.name.toLowerCase()))S.foods.push(f);});
+    // Merge logs — add days not already present
+    Object.keys(parsed.logs||{}).forEach(d=>{if(!(S.logs[d]&&S.logs[d].length>0))S.logs[d]=parsed.logs[d];});
+    // Merge water and weight — add days not already present
+    Object.keys(parsed.water||{}).forEach(d=>{if(!S.water[d])S.water[d]=parsed.water[d];});
+    Object.keys(parsed.weight||{}).forEach(d=>{if(!S.weight[d])S.weight[d]=parsed.weight[d];});
+    save();render();
+    document.getElementById('recovery-results').innerHTML='<div class="notice success">Data restored successfully. Check your log and database.</div>';
+  }catch(e){alert('Could not restore: '+e.message);}
 }
 
 document.addEventListener('click',e=>{if(!e.target.closest('.search-wrap'))document.getElementById('food-dropdown').style.display='none';});

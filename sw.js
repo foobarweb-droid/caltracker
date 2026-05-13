@@ -1,4 +1,4 @@
-const CACHE = 'cal-tracker-v3';
+const CACHE = 'cal-tracker-v4';
 const ASSETS = [
   './index.html',
   './manifest.json',
