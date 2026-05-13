@@ -468,8 +468,8 @@ input:checked+.toggle-slider:before{transform:translateX(18px);}
     <div class="modal-handle"></div>
     <div class="modal-title">Log weight</div>
     <div class="form-row" style="margin-bottom:10px">
-      <div class="form-group" style="flex:1;margin:0"><label class="form-label">Weight (kg)</label><input type="number" id="weight-kg-input" placeholder="e.g. 80.5" min="0" step="0.1" inputmode="decimal" oninput="kgToLbs()"></div>
-      <div class="form-group" style="flex:1;margin:0"><label class="form-label">Weight (lbs)</label><input type="number" id="weight-lbs-input" placeholder="e.g. 177.5" min="0" step="0.1" inputmode="decimal" oninput="lbsToKg()"></div>
+      <div class="form-group" style="flex:1;margin:0"><label class="form-label">Weight (kg)</label><input type="number" id="weight-kg-input" placeholder="e.g. 80.5" min="0" step="0.1" inputmode="decimal" oninput="kgToLbsSync()"></div>
+      <div class="form-group" style="flex:1;margin:0"><label class="form-label">Weight (lbs)</label><input type="number" id="weight-lbs-input" placeholder="e.g. 177.5" min="0" step="0.1" inputmode="decimal" oninput="lbsToKgSync()"></div>
     </div>
     <div style="font-size:12px;color:var(--text3);margin-bottom:20px" id="weight-modal-sub"></div>
     <button class="btn btn-primary btn-full" style="margin-bottom:8px" onclick="confirmWeight()">Save weight</button>
@@ -486,7 +486,7 @@ const OLD_KEYS=['cal_tracker_pwa_v1','calorie_tracker_v1','calorie_tracker_v2','
 const KJ=4.184;
 function kjToKcal(v){return Math.round(v/KJ);}
 function kcalToKj(v){return Math.round(v*KJ);}
-function kgToLbs(v){return v?parseFloat((v*2.20462).toFixed(1)):0;}
+function kgToLbsVal(v){return v?parseFloat((v*2.20462).toFixed(1)):0;}
 function lbsToKgVal(v){return v?parseFloat((v/2.20462).toFixed(2)):0;}
 function fmtEnergy(kcal){return S.settings.kjFirst?Math.round(kcal*KJ)+' kJ / '+Math.round(kcal)+' kcal':Math.round(kcal)+' kcal / '+Math.round(kcal*KJ)+' kJ';}
 
@@ -651,7 +651,7 @@ function renderLog(){
   const wt=document.getElementById('weight-card');
   const wtTarget=parseFloat(S.settings.weightTarget)||0;
   if(weightKg){
-    const lbs=kgToLbs(weightKg);
+    const lbs=kgToLbsVal(weightKg);
     const diff=wtTarget>0?(weightKg-wtTarget).toFixed(1):null;
     wt.innerHTML=`<div class="weight-top">
       <div class="weight-lbl">⚖️ Weight</div>
@@ -736,18 +736,18 @@ function confirmWater(){
 function openWeightModal(){
   const cur=S.weight[S.viewDate]||null;
   document.getElementById('weight-kg-input').value=cur||'';
-  document.getElementById('weight-lbs-input').value=cur?kgToLbs(cur):'';
+  document.getElementById('weight-lbs-input').value=cur?kgToLbsVal(cur):'';
   const wt=parseFloat(S.settings.weightTarget)||0;
-  document.getElementById('weight-modal-sub').textContent=wt?`Target: ${wt} kg (${kgToLbs(wt)} lbs)`:'Set a target weight in Settings.';
+  document.getElementById('weight-modal-sub').textContent=wt?`Target: ${wt} kg (${kgToLbsVal(wt)} lbs)`:'Set a target weight in Settings.';
   document.getElementById('weight-delete-btn').style.display=cur?'block':'none';
   openModal('weight-modal');
   setTimeout(()=>document.getElementById('weight-kg-input').focus(),300);
 }
-function kgToLbs(){
+function kgToLbsSync(){
   const kg=parseFloat(document.getElementById('weight-kg-input').value)||0;
-  document.getElementById('weight-lbs-input').value=kg?kgToLbs(kg):'';
+  document.getElementById('weight-lbs-input').value=kg?kgToLbsVal(kg):'';
 }
-function lbsToKg(){
+function lbsToKgSync(){
   const lbs=parseFloat(document.getElementById('weight-lbs-input').value)||0;
   document.getElementById('weight-kg-input').value=lbs?lbsToKgVal(lbs):'';
 }
@@ -993,7 +993,7 @@ function exportLogs(){
     const entries=S.logs[d]||[];
     const kcal=Math.round(entries.reduce((s,e)=>s+e.cal,0));
     const wKg=S.weight[d]||'';
-    return{'Date':d,'Day':new Date(d+'T12:00:00').toLocaleDateString(undefined,{weekday:'long'}),'Calories (kcal)':kcal,'Energy (kJ)':kcal?Math.round(kcal*KJ):'','Protein (g)':parseFloat(entries.reduce((s,e)=>s+(e.protein||0),0).toFixed(1))||0,'Carbs (g)':parseFloat(entries.reduce((s,e)=>s+(e.carbs||0),0).toFixed(1))||0,'Fat (g)':parseFloat(entries.reduce((s,e)=>s+(e.fat||0),0).toFixed(1))||0,'Water (ml)':S.water[d]||0,'Water (glasses)':S.water[d]?parseFloat((S.water[d]/gs).toFixed(1)):0,'Weight (kg)':wKg,'Weight (lbs)':wKg?kgToLbs(wKg):'','Goal (kcal)':goal||'','vs Goal':goal&&kcal?Math.round(kcal-goal):'','Entries':(S.logs[d]||[]).length};
+    return{'Date':d,'Day':new Date(d+'T12:00:00').toLocaleDateString(undefined,{weekday:'long'}),'Calories (kcal)':kcal,'Energy (kJ)':kcal?Math.round(kcal*KJ):'','Protein (g)':parseFloat(entries.reduce((s,e)=>s+(e.protein||0),0).toFixed(1))||0,'Carbs (g)':parseFloat(entries.reduce((s,e)=>s+(e.carbs||0),0).toFixed(1))||0,'Fat (g)':parseFloat(entries.reduce((s,e)=>s+(e.fat||0),0).toFixed(1))||0,'Water (ml)':S.water[d]||0,'Water (glasses)':S.water[d]?parseFloat((S.water[d]/gs).toFixed(1)):0,'Weight (kg)':wKg,'Weight (lbs)':wKg?kgToLbsVal(wKg):'','Goal (kcal)':goal||'','vs Goal':goal&&kcal?Math.round(kcal-goal):'','Entries':(S.logs[d]||[]).length};
   });
   const wsSummary=XLSX.utils.json_to_sheet(summaryRows);
   wsSummary['!cols']=[{wch:12},{wch:12},{wch:16},{wch:14},{wch:12},{wch:10},{wch:10},{wch:12},{wch:16},{wch:12},{wch:12},{wch:12},{wch:10},{wch:8}];
@@ -1110,7 +1110,7 @@ function renderSummary(){
         <div><div style="font-size:16px;font-weight:600;font-family:'DM Mono',monospace;color:var(--weight-text)">${wtLast}</div><div style="font-size:10px;color:var(--weight);text-transform:uppercase;letter-spacing:0.4px">Latest kg</div></div>
         <div><div style="font-size:16px;font-weight:600;font-family:'DM Mono',monospace;color:var(--weight-text)">${wtMin}</div><div style="font-size:10px;color:var(--weight);text-transform:uppercase;letter-spacing:0.4px">Lowest</div></div>
         <div><div style="font-size:16px;font-weight:600;font-family:'DM Mono',monospace;color:var(--weight-text)">${wtMax}</div><div style="font-size:10px;color:var(--weight);text-transform:uppercase;letter-spacing:0.4px">Highest</div></div>
-        <div><div style="font-size:16px;font-weight:600;font-family:'DM Mono',monospace;color:${wtChange<0?'#059669':wtChange>0?'#dc2626':var(--weight-text)}">${wtChange>0?'+':''}${wtChange}</div><div style="font-size:10px;color:var(--weight);text-transform:uppercase;letter-spacing:0.4px">Change kg</div></div>
+        <div><div style="font-size:16px;font-weight:600;font-family:'DM Mono',monospace;color:${wtChange<0?'#059669':wtChange>0?'#dc2626':'#6b6860'}">${wtChange>0?'+':''}${wtChange}</div><div style="font-size:10px;color:var(--weight);text-transform:uppercase;letter-spacing:0.4px">Change kg</div></div>
       </div>
     </div>`;
   }
